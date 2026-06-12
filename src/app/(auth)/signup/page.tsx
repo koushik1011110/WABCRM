@@ -58,35 +58,51 @@ function SignupPageInner() {
       return;
     }
 
-    setLoading(true);
-
-    // If we have an invite token, point Supabase's verification
-    // email back at the join page so the user can accept after
-    // verifying. Without a token, Supabase uses its default
-    // redirect (the app root).
-    const emailRedirectTo = inviteToken
-      ? `${window.location.origin}/join/${encodeURIComponent(inviteToken)}`
-      : undefined;
-
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: fullName,
-        },
-        ...(emailRedirectTo ? { emailRedirectTo } : {}),
-      },
-    });
-
-    if (error) {
-      setError(error.message);
-      setLoading(false);
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!supabaseUrl || supabaseUrl.includes("your-project.supabase.co")) {
+      setError("Supabase URL is not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in your .env.local file with your hosted Supabase credentials.");
       return;
     }
 
-    setSuccess(true);
-    setLoading(false);
+    setLoading(true);
+
+    try {
+      // If we have an invite token, point Supabase's verification
+      // email back at the join page so the user can accept after
+      // verifying. Without a token, Supabase uses its default
+      // redirect (the app root).
+      const emailRedirectTo = inviteToken
+        ? `${window.location.origin}/join/${encodeURIComponent(inviteToken)}`
+        : undefined;
+
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+          },
+          ...(emailRedirectTo ? { emailRedirectTo } : {}),
+        },
+      });
+
+      if (error) {
+        setError(error.message);
+        setLoading(false);
+        return;
+      }
+
+      setSuccess(true);
+    } catch (err) {
+      console.error("Signup error:", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to connect to Supabase. Check your network or Supabase URL configuration."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (success) {
